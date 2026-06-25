@@ -1,0 +1,291 @@
+{
+  "name": "Campaign Diagnostic Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "747f51c4-5c02-424f-b278-336482e77bb9",
+      "name": "When chat message received",
+      "webhookId": "8696680c-86e4-40e1-9878-466f804717d4"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Ты — аналитик-диагност рекламных кампаний. Найди причину проблемы, а не угадай её.\n\nМетодология:\n1. Сначала get_campaign_stats: определи КОГДА начались проблемы и В ЧЁМ\n   (упал CR? клики? доход?).\n2. Сформулируй 2-3 гипотезы:\n   - CR упал при стабильных кликах → мёртвая посадочная или оффер\n   - доход упал при стабильном CR → порезали выплату\n   - упали клики → проблема источника (наши тулы это не покрывают — честно скажи)\n3. Проверяй гипотезы инструментами ПО ОДНОЙ, с самой вероятной.\n   Чтобы проверить лендинг: сначала get_campaign_info (узнать landing_url и offer_id),\n   потом check_landing по этому URL.\n   Чтобы проверить выплату: get_payout_history по offer_id.\n4. Если гипотеза НЕ подтвердилась — переходи к следующей, не завершай\n   расследование после первой проверки.\n5. Вывод строй ТОЛЬКО на данных из инструментов. Формат ответа:\n   - Симптом (что и с какой даты)\n   - Проверено (что проверил, что нашёл)\n   - Диагноз (наиболее вероятная причина)\n   - Рекомендация\n6. Максимум 6 вызовов инструментов на одно расследование.",
+          "maxIterations": 8
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f5e0b4ca-e0d0-4748-ae94-227282167f2e",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        16,
+        256
+      ],
+      "id": "8ecc493f-79ea-4324-a302-521870b3f7f6",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Ty8mttkekW0Wmkny",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get row(s) in sheet in Google SheetsКарточка кампании: какой оффер крутится и URL посадочной страницы. Используй, чтобы узнать offer_id и landing_url для проверки гипотез",
+        "documentId": {
+          "__rl": true,
+          "value": "1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU",
+          "mode": "list",
+          "cachedResultName": "Campaign_Analytics",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 735201347,
+          "mode": "list",
+          "cachedResultName": "campaigns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU/edit#gid=735201347"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "campaign_id",
+              "lookupValue": "={{ $fromAI('campaign_id', 'ID кампании, например C003') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        512,
+        352
+      ],
+      "id": "67152b7c-bb93-4daf-a8cd-f86aeb00212d",
+      "name": "get_campaign_info",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LUjbiEMNrv4hh0AN",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get row(s) in sheet in Google SheetsИстория изменений ставок по офферам. Используй, чтобы проверить, не порезали ли выплату.",
+        "documentId": {
+          "__rl": true,
+          "value": "1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU",
+          "mode": "list",
+          "cachedResultName": "Campaign_Analytics",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1765704033,
+          "mode": "list",
+          "cachedResultName": "payout_history",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU/edit#gid=1765704033"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "offer_id",
+              "lookupValue": "={{ $fromAI('offer_id', 'ID оффера, например O3') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        336
+      ],
+      "id": "ddd3babf-c68b-4f75-9a07-3533a84b8e71",
+      "name": "get_payout_history",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LUjbiEMNrv4hh0AN",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Проверяет доступность посадочной: возвращает HTTP-статус. 200 = жива, 4xx/5xx = проблема.",
+        "url": "={{ $fromAI('url', 'URL посадочной страницы для проверки') }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        384,
+        272
+      ],
+      "id": "17c9c9b1-ba53-4b7c-91a6-05cbcf93d00f",
+      "name": "check_landing",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get row(s) in sheet in Google SheetsДневная статистика кампании: клики, конверсии, CR, доход по датам. Используй ПЕРВЫМ, чтобы увидеть динамику и найти дату, когда начались проблемы.",
+        "documentId": {
+          "__rl": true,
+          "value": "1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU",
+          "mode": "list",
+          "cachedResultName": "Campaign_Analytics",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1455031633,
+          "mode": "list",
+          "cachedResultName": "daily_stats",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Pj8P4wnJ_KVP6DYcM8Ldbo91ttwfy9cjbZ6FNKww6uU/edit#gid=1455031633"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "campaign_id",
+              "lookupValue": "={{ $fromAI('campaign_id', 'ID кампании, например C003') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        608,
+        160
+      ],
+      "id": "669e7ff5-72da-4d0f-a1b6-58cfe967ea02",
+      "name": "get_campaign_stats",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LUjbiEMNrv4hh0AN",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_campaign_info": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_payout_history": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_landing": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_campaign_stats": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e27c9fde-eeea-479e-a6a8-fe5f33120b0b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6c749500e158d6044d7a961540113c154c72bb8921343a9c1d8fc8259111460b"
+  },
+  "id": "lQyxrjXkXoAzWIgA",
+  "tags": []
+}
